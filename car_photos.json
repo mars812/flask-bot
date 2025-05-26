@@ -1,0 +1,23 @@
+{
+    "Toyota Yaris 2023": {
+      "cover": "images/com_yaris_hb.jpg",
+      "gallery": "https://drive.google.com/open?id=1malTlA0ZwAyFyNBD7n3SVqI8KTBr7Akm&usp=drive_fs"
+    },
+    "Honda Jazz 2019": {
+      "cover": "images/com_jazz.jpg",
+      "gallery": "https://drive.google.com/open?id=12rUHZNCWyRDVsc338oenP0s4lUtVlgiQ&usp=drive_fs"
+    },
+    "Mazda 2 2023": {
+      "cover": "images/com_mazda_2.jpg",
+      "gallery": "https://drive.google.com/open?id=1nF6iiHbKrQ2tyHciHBks38Zfd6lWYcnV&usp=drive_fs"
+    },
+    "Toyota Yaris Premium HB 2024": {
+      "cover": "images/yaris_hb_premium.jpg",
+      "gallery": "https://drive.google.com/open?id=1B5ZknO77UY3b_5YFLlJbXstOkO3xsnTn&usp=drive_fs"
+    }, 
+    "Honda City HB 2023": {
+        "cover": "images/city_hb.jpg",
+        "gallery": "https://drive.google.com/open?id=1m_iQnJauU-QdkCWfFR59nDSRTnDEzrBl&usp=drive_fs"
+      }
+  }
+  
