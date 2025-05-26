@@ -1,114 +1,156 @@
-# app.py — Flask + Telebot (webhook) интеграция
-import os
-import json
+import calendar
 import datetime
-import math
-from flask import Flask, request
-import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
-from calendar_handler import generate_calendar, handle_calendar_callback
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# === НАСТРОЙКИ ===
-API_TOKEN = os.environ.get("TELEGRAM_API_TOKEN") or "7671997445:AAEyZlmmYLOeVOD8PalzgUTjdeYhGs3bEfE"
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL") or "https://flask-bot-xxxx.onrender.com/webhook"
-ADMIN_ID = 374897465
+RU_MONTHS = {
+    1: "Января", 2: "Февраля", 3: "Марта", 4: "Апреля",
+    5: "Мая", 6: "Июня", 7: "Июля", 8: "Августа",
+    9: "Сентября", 10: "Октября", 11: "Ноября", 12: "Декабря"
+}
 
-# === ИНИЦИАЛИЗАЦИЯ ===
-bot = telebot.TeleBot(API_TOKEN)
-app = Flask(__name__)
+def generate_calendar(state, year=None, month=None, chat_id=None, user_data=None):
+    today = datetime.date.today()
+    year = year or today.year
+    month = month or today.month
 
-# === ДАННЫЕ ===
-user_data = {}
-with open("car_photos.json", "r") as f:
-    car_photos = json.load(f)
+    markup = InlineKeyboardMarkup(row_width=7)
 
-categories = [
-    ("compact.jpg", "🚗 Компактные авто", "class_compact"),
-    ("sedan.jpg", "🚘 Седаны", "class_sedan"),
-    ("parket.png", "🚙 Паркетники", "class_crossover"),
-    ("7-seat.jpeg", "🚐 Минивены", "class_suv")
-]
+    prev_btn = InlineKeyboardButton(" " if (year < today.year or (year == today.year and month <= today.month)) else "<",
+                                     callback_data="ignore" if (year < today.year or (year == today.year and month <= today.month)) else f"prev_{month}_{year}_{state}")
+    next_btn = InlineKeyboardButton(">", callback_data=f"next_{month}_{year}_{state}")
+    title_btn = InlineKeyboardButton(f"{calendar.month_name[month]} {year}", callback_data="ignore")
+    markup.row(prev_btn, title_btn, next_btn)
 
-# === ХЕЛПЕР ===
-def safe_delete(chat_id, msg_id):
-    try:
-        bot.delete_message(chat_id, msg_id)
-    except: pass
+    week_days = ["Пнд", "Вт", "Ср", "Чт", "Птн", "Сб", "Вс"]
+    markup.add(*[InlineKeyboardButton(day, callback_data="ignore") for day in week_days])
 
-# === ХЭНДЛЕРЫ ===
-@bot.message_handler(commands=['start'])
-def start(message):
-    chat_id = message.chat.id
-    user_data[chat_id] = {'history': []}
-    with open("1.png", "rb") as img:
-        msg = bot.send_photo(chat_id, img)
+    for week in calendar.monthcalendar(year, month):
+        row = []
+        for day in week:
+            if day == 0:
+                row.append(InlineKeyboardButton(" ", callback_data="ignore"))
+            else:
+                date_obj = datetime.date(year, month, day)
+                date_str = date_obj.strftime("%Y-%m-%d")
+                if state == "start" and date_obj < today:
+                    row.append(InlineKeyboardButton(" ", callback_data="ignore"))
+                elif state == "end" and user_data and chat_id in user_data and 'start_date' in user_data[chat_id]:
+                    if date_obj <= datetime.datetime.strptime(user_data[chat_id]['start_date'], "%Y-%m-%d").date():
+                        row.append(InlineKeyboardButton(" ", callback_data="ignore"))
+                    else:
+                        row.append(InlineKeyboardButton(str(day), callback_data=f"cal_{date_str}_{state}"))
+                else:
+                    row.append(InlineKeyboardButton(str(day), callback_data=f"cal_{date_str}_{state}"))
+        markup.add(*row)
+    return markup
+
+def handle_calendar_callback(call, user_data, bot):
+    chat_id = call.message.chat.id
+    data = call.data.split("_")
+
+    if data[0] == "cal" and len(data) == 3:
+        selected_date, state = data[1], data[2]
+
+        if state == "start":
+            user_data[chat_id] = user_data.get(chat_id, {})
+            user_data[chat_id]['start_date'] = selected_date
+            start_dt = datetime.datetime.strptime(selected_date, "%Y-%m-%d")
+
+            # Удаляем всё, что было до этого
+            for msg_id in user_data[chat_id].get("history", []):
+                try:
+                    bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+            user_data[chat_id]['history'] = []
+
+            # Показываем фото календаря конца аренды
+            with open("images/calendar_end.png", "rb") as photo:
+                msg_photo = bot.send_photo(
+                    chat_id,
+                    photo,
+                    caption=f"✅ Дата начала: {selected_date}"
+                )
+                user_data[chat_id]['history'].append(msg_photo.message_id)
+
+            # Календарь окончания
+            markup = generate_calendar("end", start_dt.year, start_dt.month, chat_id, user_data)
+            msg_calendar = bot.send_message(
+                chat_id,
+                text="Выберете дату окончания арены",  
+                reply_markup=markup
+            )
+
+            user_data[chat_id]['history'].append(msg_calendar.message_id)
+
+        elif state == "end":
+            user_data[chat_id]['end_date'] = selected_date
+            start_date = datetime.datetime.strptime(user_data[chat_id]['start_date'], "%Y-%m-%d")
+            end_date = datetime.datetime.strptime(user_data[chat_id]['end_date'], "%Y-%m-%d")
+            delta_days = (end_date - start_date).days
+
+            if delta_days <= 0:
+                bot.answer_callback_query(call.id, "❌ Дата окончания должна быть позже даты начала.")
+                return
+
+            # Ценообразование
+            if delta_days <= 4:
+                price_per_day = 800
+            elif delta_days <= 14:
+                price_per_day = 750
+            elif delta_days <= 30:
+                price_per_day = 700
+            else:
+                price_per_day = 400
+
+            total_price = delta_days * price_per_day
+
+            user_data[chat_id]['days'] = delta_days
+            user_data[chat_id]['price_per_day'] = price_per_day
+            user_data[chat_id]['total_price'] = total_price
+            user_data[chat_id]['start_obj'] = start_date
+            user_data[chat_id]['end_obj'] = end_date
+
+            # Очистка экрана
+            for msg_id in user_data[chat_id].get("history", []):
+                try:
+                    bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+            user_data[chat_id]['history'] = []
+
+            # Фото + кнопки доставки
+            with open("images/delivery.png", "rb") as photo:
+                markup = InlineKeyboardMarkup()
+                markup.add(
+                    InlineKeyboardButton("🚗 По Городу", callback_data="delivery_home"),
+                    InlineKeyboardButton("✈️ Аэропорт", callback_data="delivery_airport")
+                )
+                msg = bot.send_photo(chat_id, photo, caption="📦 Куда доставить авто?", reply_markup=markup)
+                user_data[chat_id]['history'].append(msg.message_id)
+
+    elif data[0] in ["prev", "next"] and len(data) >= 4:
+        month, year, state = int(data[1]), int(data[2]), data[3]
+        delta = -1 if data[0] == "prev" else 1
+        new_month = month + delta
+        new_year = year + (new_month - 1) // 12 if new_month > 12 else year - 1 if new_month < 1 else year
+        new_month = 1 if new_month > 12 else 12 if new_month < 1 else new_month
+        markup = generate_calendar(state, new_year, new_month, chat_id, user_data)
+        bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=markup)
+
+    elif call.data in ["delivery_home", "delivery_airport"]:
+        delivery_type = "home" if call.data == "delivery_home" else "airport"
+        user_data[chat_id]['delivery'] = delivery_type
+
+        try:
+            bot.delete_message(chat_id, call.message.message_id)
+        except:
+            pass
+
+        markup = InlineKeyboardMarkup()
+        markup.add(
+            InlineKeyboardButton("📱 Telegram", callback_data="contact_telegram"),
+            InlineKeyboardButton("📞 WhatsApp", callback_data="contact_whatsapp")
+        )
+        msg = bot.send_message(chat_id, "📞 Как с тобой связаться?", reply_markup=markup)
         user_data[chat_id]['history'].append(msg.message_id)
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🚗 Начать", callback_data="start_booking"))
-    msg = bot.send_message(chat_id, "Готовы выбрать авто?", reply_markup=kb)
-    user_data[chat_id]['history'].append(msg.message_id)
-
-@bot.callback_query_handler(func=lambda c: c.data == "start_booking")
-def step2(call):
-    cid = call.message.chat.id
-    for m in user_data[cid].get('history', []): safe_delete(cid, m)
-    user_data[cid]['history'] = []
-    with open("2.png", "rb") as img:
-        msg = bot.send_photo(cid, img)
-        user_data[cid]['history'].append(msg.message_id)
-    kb = InlineKeyboardMarkup()
-    for img, title, cb in categories:
-        kb.add(InlineKeyboardButton(title, callback_data=cb))
-    bot.send_message(cid, "Выберите категорию авто:", reply_markup=kb)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("class_"))
-def show_cars(call):
-    cid = call.message.chat.id
-    for m in user_data[cid].get('history', []): safe_delete(cid, m)
-    user_data[cid]['history'] = []
-    selected_class = call.data.split("_", 1)[1]
-    cars = [name for name, data in car_photos.items() if data['class'] == selected_class]
-    cars.sort()
-    for name in cars:
-        data = car_photos[name]
-        with open(data['cover'], 'rb') as img:
-            caption = f"🚗 {name}\n{data['description']}"
-            kb = InlineKeyboardMarkup()
-            kb.add(InlineKeyboardButton("📅 Выбрать даты", callback_data=f"book_{name}"))
-            msg = bot.send_photo(cid, img, caption=caption, reply_markup=kb)
-            user_data[cid]['history'].append(msg.message_id)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("book_"))
-def start_date(call):
-    cid = call.message.chat.id
-    car = call.data.split("_", 1)[1]
-    user_data[cid]['car'] = car
-    for m in user_data[cid].get('history', []): safe_delete(cid, m)
-    user_data[cid]['history'] = []
-    markup = generate_calendar("start", chat_id=cid, user_data=user_data)
-    msg = bot.send_message(cid, "📅 Выбери дату начала аренды:", reply_markup=markup)
-    user_data[cid]['history'].append(msg.message_id)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("cal_") or c.data.startswith("prev") or c.data.startswith("next") or c.data.startswith("delivery"))
-def calendar_handler(call):
-    handle_calendar_callback(call, user_data, bot)
-
-# === FLASK ===
-@app.route('/')
-def index():
-    return 'Bot is running.'
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    if request.headers.get('content-type') == 'application/json':
-        update = telebot.types.Update.de_json(request.get_data().decode("utf-8"))
-        bot.process_new_updates([update])
-        return '', 200
-    return 'Invalid request', 403
-
-# === MAIN ===
-if __name__ == '__main__':
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
