@@ -1,7 +1,7 @@
 {
   "Mazda 2 2023": {
     "class": "compact",
-    "cover": "images/com_mazda_2.jpg",
+    "cover": "com_mazda_2.jpg",
     "description": "⚙️ 1.3 л, 93 л.с., автомат\n🧼 Стильный и мягкий на ходу",
     "price_1_4": 100000,
     "price_5_14": 100000,
@@ -10,7 +10,7 @@
   },
   "Honda Jazz 2019": {
     "class": "compact",
-    "cover": "images/com_jazz.jpg",
+    "cover": "com_jazz.jpg",
     "description": "⚙️ 1.5 л, 117 л.с., автомат\n🧼 Манёвренный, городской",
     "price_1_4": 800,
     "price_5_14": 750,
@@ -19,7 +19,7 @@
   },
   "Toyota Yaris 2023 HB": {
     "class": "compact",
-    "cover": "images/com_yaris_hb_1.jpg",
+    "cover": "com_yaris_hb_1.jpg",
     "description": "⚙️ 1.2 л, 92 л.с., автомат\n🧼 Экономичный, удобно парковать",
     "price_1_4": 800,
     "price_5_14": 750,
@@ -28,7 +28,7 @@
   },
   "Toyota Ativ 2024": {
     "class": "sedan",
-    "cover": "images/sed_ativ_ar_2024.png",
+    "cover": "sed_ativ_ar_2024.png",
     "description": "⚙️ 1.2 л, 92 л.с., автомат\n🧼 Надёжный седан для города и трассы",
     "price_1_4": 850,
     "price_5_14": 800,
@@ -37,7 +37,7 @@
   },
   "Toyota Yaris 2023 Sedan": {
     "class": "sedan",
-    "cover": "images/sed_yaris_2023.jpg",
+    "cover": "sed_yaris_2023.jpg",
     "description": "⚙️ 1.2 л, 92 л.с., автомат\n🧼 Надёжный седан для города и трассы",
     "price_1_4": 750,
     "price_5_14": 600,
@@ -46,7 +46,7 @@
   },
   "Toyota Fortuner Legender 2025": {
     "class": "suv",
-    "cover": "images/suv_fortuner_legender_namo_2025.jpg",
+    "cover": "suv_fortuner_legender_namo_2025.jpg",
     "description": "⚙️ 2.4 л, дизель, автомат\n🧼 Люксовый SUV с агрессивным дизайном, комфорт   для семьи и путешествий",
     "price_1_4": 2200,
     "price_5_14": 2000,
