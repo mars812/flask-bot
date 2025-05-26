@@ -2,14 +2,14 @@ from flask import Flask, request
 import telebot
 import os
 
-API_TOKEN = '7671997445:AAEFEfyNNSl8lmJpCjlRAx6SE-g2gTJ_Ajo'
+API_TOKEN = os.environ.get("7671997445:AAEFEfyNNSl8lmJpCjlRAx6SE-g2gTJ_Ajo")
 bot = telebot.TeleBot(API_TOKEN)
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return 'Бот работает!'
+    return 'Bot is live!'
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -21,10 +21,6 @@ def webhook():
     else:
         return 'Invalid request', 403
 
-port = int(os.environ.get("PORT", 5000))
-app.run(host='0.0.0.0', port=port)
-# Обработка команды /start
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     bot.send_message(message.chat.id, "Привет! Бот запущен через Render и webhook ✅")
-
