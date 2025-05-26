@@ -188,7 +188,7 @@ def return_to_categories(call):
         safe_delete(chat_id, msg_id)
     user_data[chat_id]["history"] = []
 
-    with open(2.png", "rb") as step_image:
+    with open("2.png", "rb") as step_image:
         msg = bot.send_photo(chat_id, step_image)
         user_data[chat_id]["history"].append(msg.message_id)
 
