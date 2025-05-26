@@ -2,12 +2,6 @@ import calendar
 import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-RU_MONTHS = {
-    1: "Января", 2: "Февраля", 3: "Марта", 4: "Апреля",
-    5: "Мая", 6: "Июня", 7: "Июля", 8: "Августа",
-    9: "Сентября", 10: "Октября", 11: "Ноября", 12: "Декабря"
-}
-
 def generate_calendar(state, year=None, month=None, chat_id=None, user_data=None):
     today = datetime.date.today()
     year = year or today.year
@@ -21,7 +15,7 @@ def generate_calendar(state, year=None, month=None, chat_id=None, user_data=None
     title_btn = InlineKeyboardButton(f"{calendar.month_name[month]} {year}", callback_data="ignore")
     markup.row(prev_btn, title_btn, next_btn)
 
-    week_days = ["Пнд", "Вт", "Ср", "Чт", "Птн", "Сб", "Вс"]
+    week_days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
     markup.add(*[InlineKeyboardButton(day, callback_data="ignore") for day in week_days])
 
     for week in calendar.monthcalendar(year, month):
@@ -44,6 +38,7 @@ def generate_calendar(state, year=None, month=None, chat_id=None, user_data=None
         markup.add(*row)
     return markup
 
+
 def handle_calendar_callback(call, user_data, bot):
     chat_id = call.message.chat.id
     data = call.data.split("_")
@@ -56,7 +51,6 @@ def handle_calendar_callback(call, user_data, bot):
             user_data[chat_id]['start_date'] = selected_date
             start_dt = datetime.datetime.strptime(selected_date, "%Y-%m-%d")
 
-            # Удаляем всё, что было до этого
             for msg_id in user_data[chat_id].get("history", []):
                 try:
                     bot.delete_message(chat_id, msg_id)
@@ -64,23 +58,10 @@ def handle_calendar_callback(call, user_data, bot):
                     pass
             user_data[chat_id]['history'] = []
 
-            # Показываем фото календаря конца аренды
-            with open("images/calendar_end.png", "rb") as photo:
-                msg_photo = bot.send_photo(
-                    chat_id,
-                    photo,
-                    caption=f"✅ Дата начала: {selected_date}"
-                )
-                user_data[chat_id]['history'].append(msg_photo.message_id)
+            bot.send_message(chat_id, f"📅 Дата начала аренды выбрана: *{selected_date}*", parse_mode="Markdown")
 
-            # Календарь окончания
             markup = generate_calendar("end", start_dt.year, start_dt.month, chat_id, user_data)
-            msg_calendar = bot.send_message(
-                chat_id,
-                text="Выберете дату окончания арены",  
-                reply_markup=markup
-            )
-
+            msg_calendar = bot.send_message(chat_id, "📅 Теперь выбери дату окончания аренды:", reply_markup=markup)
             user_data[chat_id]['history'].append(msg_calendar.message_id)
 
         elif state == "end":
@@ -93,7 +74,6 @@ def handle_calendar_callback(call, user_data, bot):
                 bot.answer_callback_query(call.id, "❌ Дата окончания должна быть позже даты начала.")
                 return
 
-            # Ценообразование
             if delta_days <= 4:
                 price_per_day = 800
             elif delta_days <= 14:
@@ -111,7 +91,6 @@ def handle_calendar_callback(call, user_data, bot):
             user_data[chat_id]['start_obj'] = start_date
             user_data[chat_id]['end_obj'] = end_date
 
-            # Очистка экрана
             for msg_id in user_data[chat_id].get("history", []):
                 try:
                     bot.delete_message(chat_id, msg_id)
@@ -119,24 +98,28 @@ def handle_calendar_callback(call, user_data, bot):
                     pass
             user_data[chat_id]['history'] = []
 
-            # Фото + кнопки доставки
-            with open("images/delivery.png", "rb") as photo:
-                markup = InlineKeyboardMarkup()
-                markup.add(
-                    InlineKeyboardButton("🚗 По Городу", callback_data="delivery_home"),
+            msg = bot.send_message(chat_id,
+                f"📦 Куда доставить авто?\n\n"
+                "Нажми одну из кнопок ниже 👇",
+                reply_markup=InlineKeyboardMarkup().add(
+                    InlineKeyboardButton("🚗 По городу", callback_data="delivery_home"),
                     InlineKeyboardButton("✈️ Аэропорт", callback_data="delivery_airport")
                 )
-                msg = bot.send_photo(chat_id, photo, caption="📦 Куда доставить авто?", reply_markup=markup)
-                user_data[chat_id]['history'].append(msg.message_id)
+            )
+            user_data[chat_id]['history'].append(msg.message_id)
 
-    elif data[0] in ["prev", "next"] and len(data) >= 4:
+    elif data[0] in ["prev", "next"] and len(data) == 4:
         month, year, state = int(data[1]), int(data[2]), data[3]
         delta = -1 if data[0] == "prev" else 1
         new_month = month + delta
         new_year = year + (new_month - 1) // 12 if new_month > 12 else year - 1 if new_month < 1 else year
         new_month = 1 if new_month > 12 else 12 if new_month < 1 else new_month
+
         markup = generate_calendar(state, new_year, new_month, chat_id, user_data)
-        bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=markup)
+        try:
+            bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=markup)
+        except:
+            pass
 
     elif call.data in ["delivery_home", "delivery_airport"]:
         delivery_type = "home" if call.data == "delivery_home" else "airport"
@@ -147,10 +130,11 @@ def handle_calendar_callback(call, user_data, bot):
         except:
             pass
 
-        markup = InlineKeyboardMarkup()
-        markup.add(
-            InlineKeyboardButton("📱 Telegram", callback_data="contact_telegram"),
-            InlineKeyboardButton("📞 WhatsApp", callback_data="contact_whatsapp")
+        msg = bot.send_message(chat_id,
+            "📞 Как с тобой связаться?\n\nВыбери удобный мессенджер:",
+            reply_markup=InlineKeyboardMarkup().add(
+                InlineKeyboardButton("📱 Telegram", callback_data="contact_telegram"),
+                InlineKeyboardButton("📞 WhatsApp", callback_data="contact_whatsapp")
+            )
         )
-        msg = bot.send_message(chat_id, "📞 Как с тобой связаться?", reply_markup=markup)
         user_data[chat_id]['history'].append(msg.message_id)
