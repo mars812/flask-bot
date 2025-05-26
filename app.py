@@ -7,9 +7,6 @@ bot = telebot.TeleBot(API_TOKEN)
 
 app = Flask(__name__)
 
-port = int(os.environ.get("PORT", 5000))
-app.run(host='0.0.0.0', port=port)
-
 @app.route('/')
 def index():
     return 'Bot is live!'
@@ -23,6 +20,8 @@ def webhook():
         return '', 200
     else:
         return 'Invalid request', 403
+port = int(os.environ.get("PORT", 5000))
+app.run(host='0.0.0.0', port=port)
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
