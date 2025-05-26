@@ -9,7 +9,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 from calendar_handler import generate_calendar, handle_calendar_callback
 
 # === НАСТРОЙКИ ===
-API_TOKEN = os.environ.get("TELEGRAM_API_TOKEN") or "7671997445:AAEyZlmmYLOeVOD8PalzgUTjdeYhGs3bEfE"
+API_TOKEN = os.environ.get("TELEGRAM_API_TOKEN") or "7741404489:AAESV_pfGXhjOKhPhP7srn4rpA62jrBkGcU"
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL") or "https://flask-bot-xxxx.onrender.com/webhook"
 ADMIN_ID = 374897465
 
