@@ -29,18 +29,23 @@ categories = [
 def safe_delete(cid, msg_id):
     try: bot.delete_message(cid, msg_id)
     except: pass
-
+        
 @bot.message_handler(commands=['start'])
 def start(message):
-    cid = message.chat.id
-    user_data[cid] = {'history': []}
-    with open("1.png", "rb") as photo:
-        msg = bot.send_photo(cid, photo)
-        user_data[cid]['history'].append(msg.message_id)
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🚗 Начать", callback_data="start_booking"))
-    msg2 = bot.send_message(cid, "Готовы выбрать авто?", reply_markup=kb)
-    user_data[cid]['history'].append(msg2.message_id)
+    chat_id = message.chat.id
+    user_data[chat_id] = {}
+    for msg_id in user_data[chat_id].get('history', []):
+        safe_delete(chat_id, msg_id)
+    user_data[chat_id]['history'] = []
+
+    with open("1.png", "rb") as step_image:
+        msg = bot.send_photo(chat_id, step_image)
+        user_data[chat_id]['history'].append(msg.message_id)
+
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🚗 Приступить к бронированию", callback_data="start_booking"))
+    msg2 = bot.send_message(chat_id, "Следующим шагом выбираем категорию автомобиля. Готовы начать?", reply_markup=markup)
+    user_data[chat_id]['history'].append(msg2.message_id)
 
 @bot.callback_query_handler(func=lambda c: c.data == "start_booking")
 def step2(call):
