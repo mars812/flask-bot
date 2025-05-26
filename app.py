@@ -1,5 +1,6 @@
 from flask import Flask, request
 import telebot
+import os
 
 API_TOKEN = '7671997445:AAEFEfyNNSl8lmJpCjlRAx6SE-g2gTJ_Ajo'
 bot = telebot.TeleBot(API_TOKEN)
@@ -20,6 +21,8 @@ def webhook():
     else:
         return 'Invalid request', 403
 
+port = int(os.environ.get("PORT", 5000))
+app.run(host='0.0.0.0', port=port)
 # Обработка команды /start
 @bot.message_handler(commands=['start'])
 def start_handler(message):
