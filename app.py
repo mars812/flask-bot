@@ -227,7 +227,7 @@ def choose_car(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("cal_") or call.data.startswith("prev") or call.data.startswith("next") or call.data.startswith("delivery"))
 def handle_all_calendar_callbacks(call):
-    chat_id = call.from_user.id
+    chat_id = call.message.chat.id
     if chat_id not in user_data:
         user_data[chat_id] = {}
     handle_calendar_callback(call, user_data, bot)
